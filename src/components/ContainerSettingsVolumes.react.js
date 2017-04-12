@@ -1,7 +1,8 @@
 import _ from 'underscore';
 import React from 'react/addons';
-import remote from 'remote';
-var dialog = remote.require('dialog');
+import electron from 'electron';
+const remote = electron.remote;
+const dialog = remote.dialog;
 import shell from 'shell';
 import util from '../utils/Util';
 import metrics from '../utils/MetricsUtil';
@@ -16,33 +17,32 @@ var ContainerSettingsVolumes = React.createClass({
 
       var directory = filenames[0];
 
-      if (!directory || directory.indexOf(util.home()) === -1) {
+      if (!directory || (!util.isNative() && directory.indexOf(util.home()) === -1)) {
         dialog.showMessageBox({
           type: 'warning',
           buttons: ['OK'],
-          message: 'Invalid directory. Volume directories must be under your Users directory'
+          message: 'Invalid directory - Please make sure the directory exists and you can read/write to it.'
         });
         return;
       }
 
       metrics.track('Choose Directory for Volume');
 
-      if(util.isWindows()) {
-        directory = util.windowsToLinuxPath(directory);
-      }
-
-      var mounts = _.clone(this.props.container.Mounts);
+      let mounts = _.clone(this.props.container.Mounts);
       _.each(mounts, m => {
         if (m.Destination === dockerVol) {
-          m.Source = directory;
+          m.Source = util.windowsToLinuxPath(directory);
+          m.Driver = null;
         }
       });
 
-      var binds = mounts.map(m => {
+      let binds = mounts.map(m => {
         return m.Source + ':' + m.Destination;
       });
 
-      containerActions.update(this.props.container.Name, {Binds: binds, Mounts: mounts});
+      let hostConfig = _.extend(this.props.container.HostConfig, {Binds: binds});
+
+      containerActions.update(this.props.container.Name, {Mounts: mounts, HostConfig: hostConfig});
     });
   },
   handleRemoveVolumeClick: function (dockerVol) {
@@ -50,19 +50,21 @@ var ContainerSettingsVolumes = React.createClass({
       from: 'settings'
     });
 
-    var hostConfig = _.clone(this.props.container.HostConfig);
-    var binds = hostConfig.Binds;
-    var mounts = _.clone(this.props.container.Mounts);
+    let mounts = _.clone(this.props.container.Mounts);
     _.each(mounts, m => {
       if (m.Destination === dockerVol) {
         m.Source = null;
+        m.Driver = 'local';
       }
     });
-    var index = _.findIndex(binds, bind => bind.indexOf(`:${dockerVol}`) !== -1);
-    if (index >= 0) {
-      binds.splice(index, 1);
-    }
-    containerActions.update(this.props.container.Name, {HostConfig: hostConfig, Binds: binds, Mounts: mounts});
+
+    let binds = mounts.map(m => {
+      return m.Source + ':' + m.Destination;
+    });
+
+    let hostConfig = _.extend(this.props.container.HostConfig, {Binds: binds});
+
+    containerActions.update(this.props.container.Name, {Mounts: mounts, HostConfig: hostConfig});
   },
   handleOpenVolumeClick: function (path) {
     metrics.track('Opened Volume Directory', {
@@ -80,9 +82,9 @@ var ContainerSettingsVolumes = React.createClass({
     }
 
     var homeDir = util.isWindows() ? util.windowsToLinuxPath(util.home()) : util.home();
-    var mounts= _.map(this.props.container.Mounts, (m, i) => {
+    var mounts = _.map(this.props.container.Mounts, (m, i) => {
       let source = m.Source, destination = m.Destination;
-      if (!m.Source || m.Source.indexOf(homeDir) === -1) {
+      if (!m.Source || (!util.isNative() && m.Source.indexOf(homeDir) === -1) || (m.Source.indexOf('/var/lib/docker/volumes') !== -1)) {
         source = (
           <span className="value-right">No Folder</span>
         );

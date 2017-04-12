@@ -35,6 +35,22 @@ function open_iterm () {
 EOF
 }
 
+function open_iterm2point9 () {
+  osascript > /dev/null <<EOF
+  tell application "iTerm"
+  	if version ≥ 2.9 then
+      activate
+  		tell current window
+  			create tab with default profile
+  			tell first session of current tab
+  				write text "bash -c \"$CMD\""
+  			end tell
+  		end tell
+  	end if
+  end tell
+EOF
+}
+
 function open_terminal () {
   osascript > /dev/null <<EOF
   tell application "Terminal" to activate
@@ -47,7 +63,7 @@ EOF
 }
 
 if [ "$ITERM_EXISTS" == "true" ]; then
-  open_iterm "$@" || open_terminal "$@"
+  open_iterm2point9 "$@" || open_iterm "$@" || open_terminal "$@"
 else
   open_terminal "$@"
 fi

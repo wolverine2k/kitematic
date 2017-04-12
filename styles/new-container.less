@@ -67,6 +67,10 @@
       justify-content: center;
       flex-shrink: 0;
 
+      .error {
+        color: red;
+      }
+
       img {
         width: 380px;
       }
@@ -160,6 +164,11 @@
         font-weight: 500;
         margin-right: 0.7rem;
       }
+      .results-userimages {
+        border-left: 1px solid @gray-lighter;
+        padding-left: 1.2rem;
+        padding-right: 1.2rem;
+      }
     }
   }
 }
@@ -209,7 +218,7 @@
           border-bottom: 1px solid @color-divider;
           height: 40px;
           .box-button();
-          .selected-tag {
+          .selected-item {
             color: @brand-primary;
             margin-left: 0.3rem;
           }
@@ -227,8 +236,33 @@
           bottom: 1rem;
           right: 1rem;
         }
+        .remove {
+          display: flex;
+          flex: 1 auto;
+          justify-content: center;
+          margin: 0.8rem 0 0 0;
+          a {
+            display: block;
+            text-decoration: none;
+            cursor: default;
+            &:focus {
+              outline: 0;
+            }
+            &.active {
+              .btn-delete {
+                opacity: 0.3;
+              }
+            }
+          }
+        }
+        .small {
+          color: red;
+          text-align: center;
+          padding-top: 5px;
+          font-size: 75%;
+        }
       }
-      .tag-overlay {
+      .item-overlay {
         z-index: 1000;
         .close-overlay {
           position: absolute;
@@ -241,7 +275,7 @@
           margin-bottom: 0;
           border-bottom: 1px solid @color-divider;
         }
-        .tag-list {
+        .item-list {
           display: flex;
           flex-direction: row;
           align-items: flex-start;
@@ -250,7 +284,7 @@
           height: 90px;
           overflow: auto;
           padding: 0.5rem;
-          .tag {
+          .item {
             font-size: 11px;
             padding: 0.3rem 0.6rem;
             display: inline-block;
@@ -274,7 +308,7 @@
             }
           }
         }
-        .tags-loading {
+        .items-loading {
           position: relative;
           left: 45%;
           text-align: center;
@@ -284,7 +318,7 @@
           -webkit-animation-iteration-count: infinite;
           -webkit-animation-timing-function: linear;
         }
-        .no-tags {
+        .no-items {
           color: @gray-lighter;
           text-align: center;
           margin-top: 3rem;
@@ -382,7 +416,7 @@
               margin-right: 0.3rem;
             }
           }
-          .tags {
+          .items {
             flex: 1 auto;
             font-size: 11px;
             color: @gray-darker;

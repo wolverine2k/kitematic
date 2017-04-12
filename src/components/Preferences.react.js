@@ -1,13 +1,18 @@
 import React from 'react/addons';
 import metrics from '../utils/MetricsUtil';
 import Router from 'react-router';
+import util from '../utils/Util';
+import electron from 'electron';
+const remote = electron.remote;
 
 var Preferences = React.createClass({
   mixins: [Router.Navigation],
   getInitialState: function () {
     return {
       closeVMOnQuit: localStorage.getItem('settings.closeVMOnQuit') === 'true',
-      metricsEnabled: metrics.enabled()
+      useVM: localStorage.getItem('settings.useVM') === 'true',
+      metricsEnabled: metrics.enabled(),
+      terminalShell: localStorage.getItem('settings.terminalShell') || "sh"
     };
   },
   handleGoBackClick: function () {
@@ -24,6 +29,19 @@ var Preferences = React.createClass({
       close: checked
     });
   },
+  handleChangeUseVM: function (e) {
+    var checked = e.target.checked;
+    this.setState({
+      useVM: checked
+    });
+    localStorage.setItem('settings.useVM', checked);
+    util.isNative();
+    metrics.track('Toggled VM or Native settting', {
+      vm: checked
+    });
+    this.transitionTo('loading');
+    remote.getCurrentWindow().reload();
+  },
   handleChangeMetricsEnabled: function (e) {
     var checked = e.target.checked;
     this.setState({
@@ -34,22 +52,49 @@ var Preferences = React.createClass({
       enabled: checked
     });
   },
+  handleChangeTerminalShellEnabled: function (e) {
+    var value = e.target.value;
+    this.setState({
+      terminalShell: value
+    });
+    localStorage.setItem('settings.terminalShell', value);
+  },
   render: function () {
-    var vmSettings;
+    var vmSettings, vmShutdown, nativeSetting;
 
     if (process.platform !== 'linux') {
+      // We are on a Mac or Windows
+      if (util.isNative() || (localStorage.getItem('settings.useVM') === 'true')) {
+        nativeSetting = (
+            <div className="option">
+              <div className="option-name">
+                <label htmlFor="useVM">Use VirtualBox instead of Native on next restart</label>
+              </div>
+              <div className="option-value">
+                <input id="useVM" type="checkbox" checked={this.state.useVM} onChange={this.handleChangeUseVM}/>
+              </div>
+            </div>
+        );
+      }
+      if (!util.isNative()) {
+        vmShutdown = (
+            <div className="option">
+              <div className="option-name">
+                <label htmlFor="closeVMOnQuit">Shutdown Linux VM on closing Kitematic</label>
+              </div>
+              <div className="option-value">
+                <input id="closeVMOnQuit" type="checkbox" checked={this.state.closeVMOnQuit} onChange={this.handleChangeCloseVMOnQuit}/>
+              </div>
+            </div>
+        );
+      }
+
       vmSettings = (
-        <div>
-          <div className="title">VM Settings</div>
-          <div className="option">
-            <div className="option-name">
-              Shutdown Linux VM on closing Kitematic
-            </div>
-            <div className="option-value">
-              <input type="checkbox" checked={this.state.closeVMOnQuit} onChange={this.handleChangeCloseVMOnQuit}/>
-            </div>
+          <div>
+            <div className="title">VM Settings</div>
+            {vmShutdown}
+            {nativeSetting}
           </div>
-        </div>
       );
     }
 
@@ -61,10 +106,21 @@ var Preferences = React.createClass({
           <div className="title">App Settings</div>
           <div className="option">
             <div className="option-name">
-              Report anonymous usage analytics
+              <label htmlFor="metricsEnabled">Report anonymous usage analytics</label>
             </div>
             <div className="option-value">
-              <input type="checkbox" checked={this.state.metricsEnabled} onChange={this.handleChangeMetricsEnabled}/>
+              <input id="metricsEnabled" type="checkbox" checked={this.state.metricsEnabled} onChange={this.handleChangeMetricsEnabled}/>
+            </div>
+          </div>
+          <div className="option">
+            <div className="option-name">
+              <label htmlFor="terminalShell">Exec command shell</label>
+            </div>
+            <div className="option-value">
+              <select id="terminalShell" value={this.state.terminalShell} onChange={this.handleChangeTerminalShellEnabled}>
+                <option value="sh">sh</option>
+                <option value="bash">bash</option>
+              </select>
             </div>
           </div>
         </div>
